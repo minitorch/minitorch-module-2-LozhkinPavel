@@ -43,8 +43,7 @@ def index_to_position(index: Index, strides: Strides) -> int:
         Position in storage
     """
 
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    return int(np.sum(index * strides))
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -60,8 +59,9 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
-    # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    cur_size = np.cumprod(shape) // shape
+    prev_size = np.cumprod(shape)
+    np.put(out_index, np.arange(shape.size), (ordinal % prev_size) / cur_size)
 
 
 def broadcast_index(
@@ -79,12 +79,12 @@ def broadcast_index(
         big_shape : tensor shape of bigger tensor
         shape : tensor shape of smaller tensor
         out_index : multidimensional index of smaller tensor
-
-    Returns:
-        None
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    np.put(
+        out_index,
+        np.arange(shape.size),
+        np.minimum(big_index[big_shape.size - shape.size :], shape - 1),
+    )
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
@@ -101,8 +101,20 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
     Raises:
         IndexingError : if cannot broadcast
     """
-    # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    union_shape = tuple(shape1) if len(shape1) > len(shape2) else tuple(shape2)
+    union_len = max(len(shape1), len(shape2))
+    for i in range(union_len):
+        if i + min(len(shape1), len(shape2)) < union_len:
+            continue
+        ind1 = i + (len(shape1) - union_len)
+        ind2 = i + (len(shape2) - union_len)
+        if shape1[ind1] != 1 and shape2[ind2] != 1 and shape1[ind1] != shape2[ind2]:
+            raise IndexingError
+        union_shape = (
+            union_shape[:i] + (max(shape1[ind1], shape2[ind2]),) + union_shape[i + 1 :]
+        )
+
+    return union_shape
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
@@ -221,9 +233,11 @@ class TensorData:
         assert list(sorted(order)) == list(
             range(len(self.shape))
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
-
-        # TODO: Implement for Task 2.1.
-        raise NotImplementedError("Need to implement for Task 2.1")
+        return TensorData(
+            self._storage,
+            tuple(int(self._shape[dim]) for dim in order),
+            tuple(int(self._strides[dim]) for dim in order),
+        )
 
     def to_string(self) -> str:
         s = ""
